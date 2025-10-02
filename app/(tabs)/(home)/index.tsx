@@ -1,104 +1,197 @@
-import React from "react";
-import { Stack, Link } from "expo-router";
-import { FlatList, Pressable, StyleSheet, View, Text, Alert, Platform } from "react-native";
-import { IconSymbol } from "@/components/IconSymbol";
-import { GlassView } from "expo-glass-effect";
-import { useTheme } from "@react-navigation/native";
 
-const ICON_COLOR = "#007AFF";
+import React, { useState, useEffect } from "react";
+import { Stack } from "expo-router";
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  Switch, 
+  Platform,
+  Alert,
+  AppState,
+  AppStateStatus
+} from "react-native";
+import { Pressable } from "react-native";
+import * as Haptics from "expo-haptics";
+import * as TaskManager from "expo-task-manager";
+import * as BackgroundFetch from "expo-background-fetch";
+import { colors } from "@/styles/commonStyles";
+
+const BACKGROUND_VIBRATION_TASK = 'background-vibration';
+
+// Define the background task
+TaskManager.defineTask(BACKGROUND_VIBRATION_TASK, async () => {
+  console.log('Background vibration task running');
+  try {
+    // Trigger vibration in background
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    return BackgroundFetch.BackgroundFetchResult.NewData;
+  } catch (error) {
+    console.log('Background task error:', error);
+    return BackgroundFetch.BackgroundFetchResult.Failed;
+  }
+});
 
 export default function HomeScreen() {
-  const theme = useTheme();
-  const modalDemos = [
-    {
-      title: "Standard Modal",
-      description: "Full screen modal presentation",
-      route: "/modal",
-      color: "#007AFF",
-    },
-    {
-      title: "Form Sheet",
-      description: "Bottom sheet with detents and grabber",
-      route: "/formsheet",
-      color: "#34C759",
-    },
-    {
-      title: "Transparent Modal",
-      description: "Overlay without obscuring background",
-      route: "/transparent-modal",
-      color: "#FF9500",
+  const [isBackgroundVibrationEnabled, setIsBackgroundVibrationEnabled] = useState(false);
+  const [isLongPressing, setIsLongPressing] = useState(false);
+  const [appState, setAppState] = useState(AppState.currentState);
+
+  useEffect(() => {
+    // Register background fetch
+    registerBackgroundFetch();
+    
+    // Listen to app state changes
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    
+    return () => {
+      subscription?.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    // Handle background vibration toggle
+    if (isBackgroundVibrationEnabled) {
+      startBackgroundVibration();
+    } else {
+      stopBackgroundVibration();
     }
-  ];
+  }, [isBackgroundVibrationEnabled]);
 
-  const renderModalDemo = ({ item }: { item: (typeof modalDemos)[0] }) => (
-    <GlassView style={[
-      styles.demoCard,
-      Platform.OS !== 'ios' && { backgroundColor: theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }
-    ]} glassEffectStyle="regular">
-      <View style={[styles.demoIcon, { backgroundColor: item.color }]}>
-        <IconSymbol name="square.grid.3x3" color="white" size={24} />
-      </View>
-      <View style={styles.demoContent}>
-        <Text style={[styles.demoTitle, { color: theme.colors.text }]}>{item.title}</Text>
-        <Text style={[styles.demoDescription, { color: theme.dark ? '#98989D' : '#666' }]}>{item.description}</Text>
-      </View>
-      <Link href={item.route as any} asChild>
-        <Pressable>
-          <GlassView style={[
-            styles.tryButton,
-            Platform.OS !== 'ios' && { backgroundColor: theme.dark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)' }
-          ]} glassEffectStyle="clear">
-            <Text style={[styles.tryButtonText, { color: theme.colors.primary }]}>Try It</Text>
-          </GlassView>
-        </Pressable>
-      </Link>
-    </GlassView>
-  );
+  const registerBackgroundFetch = async () => {
+    try {
+      await BackgroundFetch.registerTaskAsync(BACKGROUND_VIBRATION_TASK, {
+        minimumInterval: 1000, // 1 second
+        stopOnTerminate: false,
+        startOnBoot: true,
+      });
+      console.log('Background fetch registered');
+    } catch (error) {
+      console.log('Failed to register background fetch:', error);
+    }
+  };
 
-  const renderHeaderRight = () => (
-    <Pressable
-      onPress={() => Alert.alert("Not Implemented", "This feature is not implemented yet")}
-      style={styles.headerButtonContainer}
-    >
-      <IconSymbol name="plus" color={theme.colors.primary} />
-    </Pressable>
-  );
+  const startBackgroundVibration = async () => {
+    try {
+      const status = await BackgroundFetch.getStatusAsync();
+      if (status === BackgroundFetch.BackgroundFetchStatus.Available) {
+        console.log('Background vibration started');
+        // Start periodic vibration
+        vibrationInterval = setInterval(() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        }, 2000); // Vibrate every 2 seconds
+      } else {
+        Alert.alert(
+          'Background App Refresh Disabled',
+          'Please enable Background App Refresh in Settings to use this feature.'
+        );
+      }
+    } catch (error) {
+      console.log('Error starting background vibration:', error);
+    }
+  };
 
-  const renderHeaderLeft = () => (
-    <Pressable
-      onPress={() => Alert.alert("Not Implemented", "This feature is not implemented yet")}
-      style={styles.headerButtonContainer}
-    >
-      <IconSymbol
-        name="gear"
-        color={theme.colors.primary}
-      />
-    </Pressable>
-  );
+  const stopBackgroundVibration = () => {
+    if (vibrationInterval) {
+      clearInterval(vibrationInterval);
+      vibrationInterval = null;
+    }
+    console.log('Background vibration stopped');
+  };
+
+  let vibrationInterval: NodeJS.Timeout | null = null;
+
+  const handleAppStateChange = (nextAppState: AppStateStatus) => {
+    console.log('App state changed:', nextAppState);
+    setAppState(nextAppState);
+  };
+
+  const handleLongPress = () => {
+    console.log('Long press detected on green rectangle');
+    setIsLongPressing(true);
+    
+    // Trigger strong vibration
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    
+    // Reset after a short delay
+    setTimeout(() => {
+      setIsLongPressing(false);
+    }, 200);
+  };
+
+  const handleSwitchToggle = (value: boolean) => {
+    console.log('Background vibration switch toggled:', value);
+    setIsBackgroundVibrationEnabled(value);
+    
+    if (value) {
+      Alert.alert(
+        'Background Vibration Enabled',
+        'Your phone will vibrate every 2 seconds even when the app is minimized. This feature works best when Background App Refresh is enabled in Settings.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
 
   return (
     <>
-      {Platform.OS === 'ios' && (
-        <Stack.Screen
-          options={{
-            title: "Building the app...",
-            headerRight: renderHeaderRight,
-            headerLeft: renderHeaderLeft,
-          }}
-        />
-      )}
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <FlatList
-          data={modalDemos}
-          renderItem={renderModalDemo}
-          keyExtractor={(item) => item.route}
-          contentContainerStyle={[
-            styles.listContainer,
-            Platform.OS !== 'ios' && styles.listContainerWithTabBar
-          ]}
-          contentInsetAdjustmentBehavior="automatic"
-          showsVerticalScrollIndicator={false}
-        />
+      <Stack.Screen
+        options={{
+          title: "Vibration App",
+          headerStyle: {
+            backgroundColor: colors.background,
+          },
+          headerTintColor: colors.text,
+          headerTitleStyle: {
+            color: colors.text,
+          },
+        }}
+      />
+      <View style={styles.container}>
+        {/* Switch in top right */}
+        <View style={styles.switchContainer}>
+          <Text style={styles.switchLabel}>Background Vibration</Text>
+          <Switch
+            value={isBackgroundVibrationEnabled}
+            onValueChange={handleSwitchToggle}
+            trackColor={{ 
+              false: '#767577', 
+              true: colors.accent 
+            }}
+            thumbColor={isBackgroundVibrationEnabled ? colors.primary : '#f4f3f4'}
+            ios_backgroundColor="#3e3e3e"
+          />
+        </View>
+
+        {/* Green rectangle in center */}
+        <View style={styles.centerContainer}>
+          <Pressable
+            onLongPress={handleLongPress}
+            delayLongPress={500}
+            style={[
+              styles.greenRectangle,
+              isLongPressing && styles.greenRectanglePressed
+            ]}
+          >
+            <Text style={styles.rectangleText}>
+              Hold me to vibrate
+            </Text>
+          </Pressable>
+        </View>
+
+        {/* Status indicator */}
+        <View style={styles.statusContainer}>
+          <Text style={styles.statusText}>
+            App State: {appState}
+          </Text>
+          <Text style={styles.statusText}>
+            Background Vibration: {isBackgroundVibrationEnabled ? 'ON' : 'OFF'}
+          </Text>
+          {Platform.OS === 'ios' && (
+            <Text style={styles.infoText}>
+              Note: Background vibration works best with Background App Refresh enabled in iOS Settings.
+            </Text>
+          )}
+        </View>
       </View>
     </>
   );
@@ -107,55 +200,67 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // backgroundColor handled dynamically
-  },
-  listContainer: {
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-  },
-  listContainerWithTabBar: {
-    paddingBottom: 100, // Extra padding for floating tab bar
-  },
-  demoCard: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  demoIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    padding: 20,
   },
-  demoContent: {
+  switchContainer: {
+    position: 'absolute',
+    top: 60,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  switchLabel: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '500',
+    marginRight: 10,
+  },
+  centerContainer: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  demoTitle: {
-    fontSize: 18,
+  greenRectangle: {
+    width: 200,
+    height: 120,
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.2)',
+    elevation: 4,
+  },
+  greenRectanglePressed: {
+    backgroundColor: colors.accent,
+    transform: [{ scale: 0.95 }],
+  },
+  rectangleText: {
+    color: colors.text,
+    fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
-    // color handled dynamically
+    textAlign: 'center',
   },
-  demoDescription: {
+  statusContainer: {
+    position: 'absolute',
+    bottom: 100,
+    alignItems: 'center',
+  },
+  statusText: {
+    color: colors.text,
     fontSize: 14,
-    lineHeight: 18,
-    // color handled dynamically
+    marginBottom: 5,
+    textAlign: 'center',
   },
-  headerButtonContainer: {
-    padding: 6,
-  },
-  tryButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-  },
-  tryButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    // color handled dynamically
+  infoText: {
+    color: colors.grey,
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 10,
+    paddingHorizontal: 20,
+    lineHeight: 16,
   },
 });
