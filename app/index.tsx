@@ -1,6 +1,5 @@
 
 import React, { useState, useEffect } from "react";
-import { Stack } from "expo-router";
 import { 
   View, 
   Text, 
@@ -32,7 +31,7 @@ TaskManager.defineTask(BACKGROUND_VIBRATION_TASK, async () => {
   }
 });
 
-export default function HomeScreen() {
+export default function MainScreen() {
   const [isBackgroundVibrationEnabled, setIsBackgroundVibrationEnabled] = useState(false);
   const [isLongPressing, setIsLongPressing] = useState(false);
 
@@ -118,45 +117,38 @@ export default function HomeScreen() {
   };
 
   return (
-    <>
-      <Stack.Screen
-        options={{
-          headerShown: false,
-        }}
-      />
-      <View style={styles.container}>
-        {/* Switch in top right */}
-        <View style={styles.switchContainer}>
-          <Switch
-            value={isBackgroundVibrationEnabled}
-            onValueChange={handleSwitchToggle}
-            trackColor={{ 
-              false: '#767577', 
-              true: '#4CAF50' 
-            }}
-            thumbColor={isBackgroundVibrationEnabled ? '#2E7D32' : '#f4f3f4'}
-            ios_backgroundColor="#3e3e3e"
-          />
-        </View>
-
-        {/* Green rectangle in center */}
-        <View style={styles.centerContainer}>
-          <Pressable
-            onLongPress={handleLongPress}
-            delayLongPress={500}
-            style={[
-              styles.greenRectangle,
-              isLongPressing && styles.greenRectanglePressed
-            ]}
-          />
-        </View>
-
-        {/* Only "background" text */}
-        <View style={styles.textContainer}>
-          <Text style={styles.backgroundText}>background</Text>
-        </View>
+    <View style={styles.container}>
+      {/* Switch in top right */}
+      <View style={styles.switchContainer}>
+        <Switch
+          value={isBackgroundVibrationEnabled}
+          onValueChange={handleSwitchToggle}
+          trackColor={{ 
+            false: '#767577', 
+            true: '#4CAF50' 
+          }}
+          thumbColor={isBackgroundVibrationEnabled ? '#2E7D32' : '#f4f3f4'}
+          ios_backgroundColor="#3e3e3e"
+        />
       </View>
-    </>
+
+      {/* Green rectangle in center */}
+      <View style={styles.centerContainer}>
+        <Pressable
+          onLongPress={handleLongPress}
+          delayLongPress={500}
+          style={[
+            styles.greenRectangle,
+            isLongPressing && styles.greenRectanglePressed
+          ]}
+        />
+      </View>
+
+      {/* Only "background" text */}
+      <View style={styles.textContainer}>
+        <Text style={styles.backgroundText}>background</Text>
+      </View>
+    </View>
   );
 }
 
