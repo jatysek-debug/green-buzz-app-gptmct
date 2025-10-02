@@ -118,8 +118,9 @@ export default function MainScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Switch in top right */}
+      {/* Switch and "background" text in top right */}
       <View style={styles.switchContainer}>
+        <Text style={styles.backgroundText}>background</Text>
         <Switch
           value={isBackgroundVibrationEnabled}
           onValueChange={handleSwitchToggle}
@@ -143,11 +144,6 @@ export default function MainScreen() {
           ]}
         />
       </View>
-
-      {/* Only "background" text */}
-      <View style={styles.textContainer}>
-        <Text style={styles.backgroundText}>background</Text>
-      </View>
     </View>
   );
 }
@@ -164,6 +160,9 @@ const styles = StyleSheet.create({
     top: 60,
     right: 20,
     zIndex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   centerContainer: {
     flex: 1,
@@ -179,11 +178,6 @@ const styles = StyleSheet.create({
   greenRectanglePressed: {
     backgroundColor: '#2E7D32',
     transform: [{ scale: 0.95 }],
-  },
-  textContainer: {
-    position: 'absolute',
-    bottom: 100,
-    alignItems: 'center',
   },
   backgroundText: {
     color: '#000000',
